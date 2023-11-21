@@ -1,0 +1,47 @@
+<h1>Security</h1>
+
+<form action="/securities/security" method="POST">
+ <div><label>ID:</label></div>
+ <input type="text" name="id" {{ if eq .Id "" }} value="" {{ else }} value={{.Id}} {{ end }}>
+ <div><label>Type:</label></div>
+ <body>
+   <select type="text" name="type" value="bond">
+    <option value="share">Share</option>
+    <option {{ if eq .Type "etf" }} selected="selected" {{ end }} value="etf">ETF</option>
+    <option {{ if eq .Type "bond" }} selected="selected" {{ end }} value="bond">Bond</option>
+    <option {{ if eq .Type "currency" }} selected="selected" {{ end }} value="currency">Currency</option>
+   </select>
+ </body> 
+ <div><label>Date from - till:</label></div>
+ <input type="date" name="dateFrom" value={{.DateFrom}}>
+ <input type="date" name="dateTill" value={{.DateTill}}>
+
+ <div><input type="checkbox" name="updatePrices" value={{.UpdatePrices}} {{ if eq .UpdatePrices "" }} {{ else }} checked=true value="" {{ end }}>
+ <label for="updatePrices">update prices</label></div>
+ <p><div><button type="submit">Get prices</div></p>
+</form>
+<form action="/securities/delete?id={{.Id}}&type={{.Type}}" method="POST">
+    <input type="submit" value="Delete security"/>
+</form>
+
+<p><a href="/securities">To the main page</a></p>
+
+<h1>Quotes</h1>
+
+<h3>{{.Id}} - {{.Name}}<h3>
+
+<div>
+ <body>
+  <table border="1">
+   <tr>
+    <th>Date</th>
+    <th>Price</th>
+    <th>Day change (%)</th>
+    <th>Total change (%)</th>
+   </tr>
+{{range .ExpQuotes}}
+   <tr><td>{{.End}}</td><td>{{.Close}}</td><td>{{.Change}}</td><td>{{.TotalChange}}</td></tr>
+{{end}}
+  </table>
+ </body>
+</div>

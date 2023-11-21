@@ -1,0 +1,7 @@
+{
+	"HtmlDir": "src\\html\\",
+	"HttpPath": "http://localhost:8080",
+	"MySQL": "root:sqlpass@tcp(127.0.0.1:3306)",
+	"MainDB": "securities_demo",
+	"DemoData": true
+}

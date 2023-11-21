@@ -1,0 +1,1 @@
+SecuritiesProject provides methods to work with securities and get data from Moscow Exchange api

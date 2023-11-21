@@ -1,0 +1,21 @@
+<h1>Securities (file)</h1>
+
+<form action="/securities/securityList" method="POST">
+ <div><label>Type:</label></div>
+ <body>
+   <select type="text" name="type" value="bond">
+    <option value="share">Share</option>
+    <option {{ if eq .Type "etf" }} selected="selected" {{ end }} value="etf">ETF</option>
+    <option {{ if eq .Type "bond" }} selected="selected" {{ end }} value="bond">Bond</option>
+    <option {{ if eq .Type "currency" }} selected="selected" {{ end }} value="currency">Currency</option>
+   </select>
+ </body> 
+ <div><label>Date from - till:</label></div>
+ <input type="date" name="dateFrom" value={{.DateFrom}}>
+ <input type="date" name="dateTill" value={{.DateTill}}>
+ <div><label>File:</label></div>
+ <input type="text" name="fileName" {{ if eq .FileName "" }} value="" {{ else }} value={{.FileName}} {{ end }}>
+ <p><div><button type="submit">Get prices</div></p>
+</form>
+
+<p><a href="/securities">To the main page</a></p>

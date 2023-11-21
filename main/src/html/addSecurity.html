@@ -1,0 +1,29 @@
+<h1>Add security</h1>
+
+<form action="/securities/add" method="POST">
+ <div><label>ID:</label></div>
+ <input type="text" name="id" {{ if eq .Id "" }} value="" {{ else }} value={{.Id}} {{ end }}>
+ <div><label>Name:</label></div>
+ <input type="text" name="name" {{ if eq .Id "" }} value="" {{ else }} value={{.Name}} {{ end }}>
+ <p><div><label>Type:</label></div>
+ <body>
+   <select type="text" name="type">
+    <option {{ if eq .Type "share" }} selected="selected" {{ end }} value="share">Share</option>
+    <option {{ if eq .Type "etf" }} selected="selected" {{ end }} value="etf">ETF</option>
+    <option {{ if eq .Type "bond" }} selected="selected" {{ end }} value="bond">Bond</option>
+    <option {{ if eq .Type "currency" }} selected="selected" {{ end }} value="currency">Currency</option>
+   </select>
+ </body>
+ <div><label>Currency:</label></div>
+ <body>
+   <select type="text" name="currency">
+    <option {{ if eq .Currency "RUB" }} selected="selected" {{ end }} value="RUB">RUB</option>
+    <option {{ if eq .Currency "CNY" }} selected="selected" {{ end }} value="CNY">CNY</option>
+    <option {{ if eq .Currency "USD" }} selected="selected" {{ end }} value="USD">USD</option>
+    <option {{ if eq .Currency "EUR" }} selected="selected" {{ end }} value="EUR">EUR</option>
+   </select>
+ </body></p>
+ <p><div><button type="submit">Add</div></p>
+</form>
+
+<p><a href="/securities">To the main page</a></p>

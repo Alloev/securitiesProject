@@ -1,0 +1,43 @@
+<h1>Securities comparison</h1>
+
+<form action="/securities/compare" method="POST">
+ <div><label>ID:</label></div>
+ <input type="text" name="id1" {{ if eq .Id1 "" }} value="" {{ else }} value={{.Id1}} {{ end }}>
+ <input type="text" name="id2" {{ if eq .Id2 "" }} value="" {{ else }} value={{.Id2}} {{ end }}>
+ <div><label>Type:</label></div>
+ <body>
+   <select type="text" name="type" value="bond">
+    <option value="share">Share</option>
+    <option {{ if eq .Type "etf" }} selected="selected" {{ end }} value="etf">ETF</option>
+    <option {{ if eq .Type "bond" }} selected="selected" {{ end }} value="bond">Bond</option>
+    <option {{ if eq .Type "currency" }} selected="selected" {{ end }} value="currency">Currency</option>
+   </select>
+ </body> 
+ <div><label>Date from - till:</label></div>
+ <input type="date" name="dateFrom" value={{.DateFrom}}>
+ <input type="date" name="dateTill" value={{.DateTill}}>
+ <p><div><button type="submit">Compare</div></p>
+</form>
+
+<p><a href="/securities">To the main page</a></p>
+
+<h1>Comparison</h1>
+
+<h3>{{.Id1}} and {{.Id2}}<h3>
+
+<div>
+ <body>
+  <table border="1">
+   <tr>
+    <th>Date</th>
+    <th>Price {{.Id1}}</th>
+    <th>Price {{.Id2}}</th>
+    <th>Day profit {{.Id1}} over {{.Id2}} (%)</th>
+    <th>Total profit {{.Id1}} over {{.Id2}} (%)</th>
+   </tr>
+{{range .ExpQuotes}}
+   <tr><td>{{.Date}}</td><td>{{.Price1}}</td><td>{{.Price2}}</td><td>{{.DayProfit}}</td><td>{{.TotalProfit}}</td></tr>
+{{end}}
+  </table>
+ </body>
+</div>

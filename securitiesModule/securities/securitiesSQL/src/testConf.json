@@ -1,0 +1,4 @@
+{
+	"MySQL": "root:sqlpass@tcp(127.0.0.1:3306)",
+	"TestDB": "securities_test"
+}
