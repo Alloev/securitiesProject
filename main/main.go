@@ -516,7 +516,7 @@ func allSecuritiesHandler(writer http.ResponseWriter, request *http.Request) {
 	req := httpPath + "/securities/getAllSecuritiesLastQuotes"
 	firstParam := true
 	if typeNameFilter != "" {
-		addHTTPRequestParam(&req, "type", typeNameFilter, &firstParam)
+			params.Add("type", typeNameFilter)
 	}
 	if currencyNameFilter != "" {
 		addHTTPRequestParam(&req, "currency", currencyNameFilter, &firstParam)
