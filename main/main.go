@@ -10,6 +10,7 @@ import (
 	"log"
 	"math"
 	"net/http"
+	"net/url"
 	"os"
 	"securitiesModule/securities"
 	"securitiesModule/securities/securitiesSQL"
@@ -151,18 +152,6 @@ func main() {
 	// finish working
 	err := http.ListenAndServe("localhost:8080", nil)
 	log.Fatal(err)
-}
-
-// addHttpRequestParam adds new param to http GET request
-func addHTTPRequestParam(request *string, paramName, paramValue string, firstParam *bool) {
-	if *firstParam {
-		*request += "?"
-		*firstParam = false
-	} else {
-		*request += "&"
-	}
-
-	*request += paramName + "=" + strings.ReplaceAll(paramValue, " ", "%20")
 }
 
 // getDateFromString returns date (no time) from the given string
@@ -514,12 +503,15 @@ func allSecuritiesHandler(writer http.ResponseWriter, request *http.Request) {
 	currencyNameFilter := request.FormValue("currencyFilter")
 
 	req := httpPath + "/securities/getAllSecuritiesLastQuotes"
-	firstParam := true
-	if typeNameFilter != "" {
+	if typeNameFilter != "" || currencyNameFilter != "" {
+		params := url.Values{}
+		if typeNameFilter != "" {
 			params.Add("type", typeNameFilter)
-	}
-	if currencyNameFilter != "" {
-		addHTTPRequestParam(&req, "currency", currencyNameFilter, &firstParam)
+		}
+		if currencyNameFilter != "" {
+			params.Add("currency", currencyNameFilter)
+		}
+		req = req + "?" + params.Encode()
 	}
 
 	resStruct := &AllSecuritiesData{}
@@ -563,11 +555,12 @@ func addSecurityPageHandler(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	req := httpPath + "/securities/addSecurity"
-	firstParam := true
-	addHTTPRequestParam(&req, "id", id, &firstParam)
-	addHTTPRequestParam(&req, "name", name, &firstParam)
-	addHTTPRequestParam(&req, "type", typeName, &firstParam)
-	addHTTPRequestParam(&req, "currency", currencyName, &firstParam)
+	params := url.Values{}
+	params.Add("id", id)
+	params.Add("name", name)
+	params.Add("type", typeName)
+	params.Add("currency", currencyName)
+	req = req + "?" + params.Encode()
 
 	resp, err := http.Get(req)
 	if err != nil {
@@ -635,18 +628,19 @@ func securityHandler(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	req := httpPath + "/securities/getSecurityData"
-	firstParam := true
-	addHTTPRequestParam(&req, "id", id, &firstParam)
-	addHTTPRequestParam(&req, "type", typeString, &firstParam)
+	params := url.Values{}
+	params.Add("id", id)
+	params.Add("type", typeString)
 	if dateFromString != "" {
-		addHTTPRequestParam(&req, "dateFrom", dateFromString, &firstParam)
+		params.Add("dateFrom", dateFromString)
 	}
 	if dateTillString != "" {
-		addHTTPRequestParam(&req, "dateTill", dateTillString, &firstParam)
+		params.Add("dateTill", dateTillString)
 	}
 	if updatePrices != "" {
-		addHTTPRequestParam(&req, "updatePrices", "true", &firstParam)
+		params.Add("updatePrices", "true")
 	}
+	req = req + "?" + params.Encode()
 
 	resStruct := &securityData{}
 	executeRequest(writer, req, resStruct)
@@ -708,15 +702,16 @@ func compareHandler(writer http.ResponseWriter, request *http.Request) {
 
 	reqResult := func(id string) *securityData {
 		req := httpPath + "/securities/getSecurityData"
-		firstParam := true
-		addHTTPRequestParam(&req, "id", id, &firstParam)
-		addHTTPRequestParam(&req, "type", typeString, &firstParam)
+		params := url.Values{}
+		params.Add("id", id)
+		params.Add("type", typeString)
 		if dateFromString != "" {
-			addHTTPRequestParam(&req, "dateFrom", dateFromString, &firstParam)
+			params.Add("dateFrom", dateFromString)
 		}
 		if dateTillString != "" {
-			addHTTPRequestParam(&req, "dateTill", dateTillString, &firstParam)
+			params.Add("dateTill", dateTillString)
 		}
+		req = req + "?" + params.Encode()
 
 		resStruct := &securityData{}
 		executeRequest(writer, req, resStruct)
