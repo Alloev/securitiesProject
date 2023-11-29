@@ -48,37 +48,22 @@ func SecurityExists(db *sql.DB, id string, sType securities.SecurityType) (bool,
 		return false, errors.New("security has no type or type is unknown")
 	}
 
-	// checking security type in query is safe
-	// checking security id is not
-	queryText := fmt.Sprintf("SELECT id FROM securities WHERE type = \"%s\"", sType)
-	resDB, err := db.Query(queryText)
+	queryText := "SELECT id FROM securities WHERE id = ? AND type = ?"
+	resDB, err := db.Query(queryText, id, sType)
 	if err != nil {
 		return false, err
 	}
-
-	var resDBRow struct {
-		id string
+	if resDB.Next() {
+		return true, nil
 	}
-	for resDB.Next() {
-		err = resDB.Scan(&resDBRow.id)
-		if err != nil {
-			return false, err
-		}
-
-		if resDBRow.id == id {
-			return true, nil
-		}
-	}
-
 	return false, nil
 }
 
 // SecurityQuotesExist checks if security quotes for the given begin date and the given interval exist in database
 func SecurityQuotesExist(db *sql.DB, sec *securities.Security, date time.Time, interval securities.QuotesInterval) (bool, error) {
-	queryText := fmt.Sprintf("SELECT * FROM security_quotes WHERE security = \"%s\" AND begin = \"%s\" AND interv = \"%d\"",
-		sec.Id(), date.UTC().Format("2006-01-02 15:04:05"), interval)
+	queryText := "SELECT * FROM security_quotes WHERE security = ? AND begin = ? AND interv = ?"
 
-	res, err := db.Query(queryText)
+	res, err := db.Query(queryText, sec.Id(), date.UTC().Format("2006-01-02 15:04:05"), interval)
 	if err != nil {
 		return false, err
 	}
@@ -102,18 +87,14 @@ func GetSecurityData(db *sql.DB, sec *securities.Security) error {
 		return fmt.Errorf("security %s does not exist", sec.Id())
 	}
 
-	sQueryText := fmt.Sprintf("SELECT name, currency FROM securities WHERE id = \"%s\"", sec.Id()) // safe!
-	sResDB, err := db.Query(sQueryText)
-	if err != nil {
-		return err
-	}
+	sQueryText := "SELECT name, currency FROM securities WHERE id = ?"
+	sResDB := db.QueryRow(sQueryText, sec.Id())
 
 	var sResDBRow struct {
 		name     string
 		currency string
 	}
 
-	_ = sResDB.Next() // we know that security exists
 	err = sResDB.Scan(&sResDBRow.name, &sResDBRow.currency)
 	if err != nil {
 		return err
@@ -122,8 +103,8 @@ func GetSecurityData(db *sql.DB, sec *securities.Security) error {
 	sec.SetName(sResDBRow.name)
 	sec.SetCurrency(securities.GetSecurityCurrencyFromString(sResDBRow.currency))
 
-	sqQueryText := fmt.Sprintf("SELECT interv, begin, end, open, close, high, low FROM security_quotes WHERE security = \"%s\"", sec.Id()) // safe!
-	sqResDB, err := db.Query(sqQueryText)
+	sqQueryText := "SELECT interv, begin, end, open, close, high, low FROM security_quotes WHERE security = ?"
+	sqResDB, err := db.Query(sqQueryText, sec.Id())
 	if err != nil {
 		return err
 	}
@@ -262,8 +243,8 @@ func GetAllSecuritiesData(db *sql.DB, typeNameFilter string, currencyNameFilter 
 						LEFT OUTER JOIN security_quotes AS sq
 						ON s.id = sq.security
 				WHERE
-					&typeCondition
-					AND &currencyCondition
+					(s.type = ? OR ?)
+					AND (s.currency = ? OR ?)
 				GROUP BY
 					s.id,
 					s.name,
@@ -290,19 +271,7 @@ func GetAllSecuritiesData(db *sql.DB, typeNameFilter string, currencyNameFilter 
 				ORDER BY
 				id`
 
-	if typeNameFilter != "" {
-		queryText = strings.ReplaceAll(queryText, "&typeCondition", "s.type = \""+strings.ToLower(typeNameFilter)+"\"") // safe!
-	} else {
-		queryText = strings.ReplaceAll(queryText, "&typeCondition", "TRUE")
-	}
-
-	if currencyNameFilter != "" {
-		queryText = strings.ReplaceAll(queryText, "&currencyCondition", "s.currency = \""+strings.ToUpper(currencyNameFilter)+"\"") // safe!
-	} else {
-		queryText = strings.ReplaceAll(queryText, "&currencyCondition", "TRUE")
-	}
-
-	securitiesDB, err := db.Query(queryText)
+	securitiesDB, err := db.Query(queryText, strings.ToLower(typeNameFilter), typeNameFilter == "", strings.ToUpper(currencyNameFilter), currencyNameFilter == "")
 	if err != nil {
 		return nil, err
 	}
@@ -481,10 +450,8 @@ func UpdateSecurityQuotes(db *sql.DB, sec *securities.Security, dateFrom time.Ti
 				// we need to delete old quotes and add new one
 				// for example, yesterday we've got day quotes in the middle of the day - it looks ok but actually it's not really day quotes
 				// so today we need to update it to get real day quotes for the previous day
-				queryText := fmt.Sprintf("DELETE FROM security_quotes WHERE security = \"%s\" AND begin = \"%s\" AND interv = \"%d\"",
-					sec.Id(), q.Begin.UTC().Format("2006-01-02 15:04:05"), interval)
-
-				_, err = db.Query(queryText)
+				queryText := "DELETE FROM security_quotes WHERE security = ? AND begin = ? AND interv = ?"
+				_, err = db.Query(queryText, sec.Id(), q.Begin.UTC().Format("2006-01-02 15:04:05"), interval)
 				if err != nil {
 					log.Fatal("something wrong with database query when trying to delete old security quotes")
 				}
@@ -564,15 +531,14 @@ func DeleteSecurity(db *sql.DB, sec *securities.Security) error {
 		return nil
 	}
 
-	queryText := fmt.Sprintf("DELETE FROM security_quotes WHERE security = \"%s\"", sec.Id())
-
-	_, err = db.Query(queryText)
+	queryText := "DELETE FROM security_quotes WHERE security = ?"
+	_, err = db.Query(queryText, sec.Id())
 	if err != nil {
 		return err
 	}
 
-	queryText = fmt.Sprintf("DELETE FROM securities WHERE id = \"%s\"", sec.Id())
-	_, err = db.Query(queryText)
+	queryText = "DELETE FROM securities WHERE id = ?"
+	_, err = db.Query(queryText, sec.Id())
 	if err != nil {
 		return err
 	}
