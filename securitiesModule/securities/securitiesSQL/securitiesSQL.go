@@ -371,7 +371,7 @@ func AddSecurity(db *sql.DB, sec *securities.Security) error {
 	}
 	queryText := fmt.Sprintf("INSERT INTO securities (id, name, type, currency) VALUES (\"%s\", \"%s\", \"%s\", \"%s\")", sec.Id(), sec.Name(), sec.SType(), cur)
 
-	_, err = db.Query(queryText)
+	_, err = db.Exec(queryText)
 	if err != nil {
 		return err
 	}
@@ -451,7 +451,7 @@ func UpdateSecurityQuotes(db *sql.DB, sec *securities.Security, dateFrom time.Ti
 				// for example, yesterday we've got day quotes in the middle of the day - it looks ok but actually it's not really day quotes
 				// so today we need to update it to get real day quotes for the previous day
 				queryText := "DELETE FROM security_quotes WHERE security = ? AND begin = ? AND interv = ?"
-				_, err = db.Query(queryText, sec.Id(), q.Begin.UTC().Format("2006-01-02 15:04:05"), interval)
+				_, err = db.Exec(queryText, sec.Id(), q.Begin.UTC().Format("2006-01-02 15:04:05"), interval)
 				if err != nil {
 					log.Fatal("something wrong with database query when trying to delete old security quotes")
 				}
@@ -460,7 +460,7 @@ func UpdateSecurityQuotes(db *sql.DB, sec *securities.Security, dateFrom time.Ti
 			queryText := fmt.Sprintf("INSERT INTO security_quotes (security, begin, end, interv, open, close, high, low) VALUES (\"%s\", \"%s\", \"%s\", \"%d\", \"%f\", \"%f\", \"%f\", \"%f\")",
 				sec.Id(), q.Begin.UTC().Format(form), q.End.UTC().Format(form), interval, q.Open, q.Close, q.High, q.Low)
 
-			_, err = db.Query(queryText)
+			_, err = db.Exec(queryText)
 			if err != nil {
 				log.Fatal("something wrong with database query when trying to add security quotes")
 			}
@@ -508,7 +508,7 @@ func UpdateAllSecuritiesLastQuotes(db *sql.DB, typeNameFilter string, currencyNa
 			queryText := fmt.Sprintf("INSERT INTO security_quotes (security, begin, end, interv, open, close, high, low) VALUES (\"%s\", \"%s\", \"%s\", \"%d\", \"%f\", \"%f\", \"%f\", \"%f\")",
 				s.Id(), q.Begin.UTC().Format(form), q.End.UTC().Format(form), securities.IntervalDay, q.Open, q.Close, q.High, q.Low)
 
-			_, err = db.Query(queryText)
+			_, err = db.Exec(queryText)
 			if err != nil {
 				log.Fatal("something wrong with database query when trying to add security quotes")
 			}
@@ -532,13 +532,13 @@ func DeleteSecurity(db *sql.DB, sec *securities.Security) error {
 	}
 
 	queryText := "DELETE FROM security_quotes WHERE security = ?"
-	_, err = db.Query(queryText, sec.Id())
+	_, err = db.Exec(queryText, sec.Id())
 	if err != nil {
 		return err
 	}
 
 	queryText = "DELETE FROM securities WHERE id = ?"
-	_, err = db.Query(queryText, sec.Id())
+	_, err = db.Exec(queryText, sec.Id())
 	if err != nil {
 		return err
 	}
@@ -566,6 +566,7 @@ func CreateDatabase(sqlParam string, dbName string) (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
+	//db.SetMaxOpenConns(150)
 
 	// Creating Securities table - where we keep general information about securities
 	_, err = db.Exec(`
