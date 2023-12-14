@@ -356,58 +356,43 @@ func GetAllSecuritiesData(db *sql.DB, typeNameFilter string, currencyNameFilter 
 
 // AddSecurity adds new security to database
 func AddSecurity(db *sql.DB, sec *securities.Security) error {
-	seqExists, err := SecurityExists(db, sec.Id(), sec.SType())
-	if err != nil {
-		return err
-	}
-
-	if seqExists {
-		return nil
-	}
-
-	cur := sec.Currency()
-	if cur == securities.UnknownCurrency {
-		cur = securities.RUB
-	}
-	queryText := fmt.Sprintf("INSERT INTO securities (id, name, type, currency) VALUES (\"%s\", \"%s\", \"%s\", \"%s\")", sec.Id(), sec.Name(), sec.SType(), cur)
-
-	_, err = db.Exec(queryText)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return AddSecurities(db, []*securities.Security{sec})
 }
 
 // AddSecurities adds a list of securities to database
 func AddSecurities(db *sql.DB, sec []*securities.Security) error {
-	wg := new(sync.WaitGroup)
-	quitChan := make(chan bool)
-	finErrChan := make(chan error)
-	errChan := make(chan error)
-
-	go collectErrors(quitChan, finErrChan, errChan)
+	queryText := "INSERT INTO securities (id, name, type, currency) VALUES"
+	var args []any
+	noData := true
 
 	for _, s := range sec {
-		wg.Add(1)
+		secExists, err := SecurityExists(db, s.Id(), s.SType())
+		if err != nil {
+			return err
+		}
 
-		go func(s *securities.Security, errChan chan error) {
-			defer wg.Done()
+		if secExists {
+			continue
+		}
 
-			err := AddSecurity(db, s)
+		cur := s.Currency()
+		if cur == securities.UnknownCurrency {
+			cur = securities.RUB
+		}
 
-			if err != nil {
-				errChan <- err
-			}
-		}(s, errChan)
+		if !noData {
+			queryText += ","
+		}
+		queryText += " (?, ?, ?, ?)"
+		args = append(args, s.Id(), s.Name(), s.SType(), cur)
+		noData = false
 	}
 
-	wg.Wait()
+	if noData {
+		return nil
+	}
 
-	quitChan <- true
-
-	err := <-finErrChan
-	close(finErrChan)
+	_, err := db.Exec(queryText, args...)
 	if err != nil {
 		return err
 	}
@@ -444,7 +429,7 @@ func UpdateSecurityQuotes(db *sql.DB, sec *securities.Security, dateFrom time.Ti
 	queryText := "DELETE FROM security_quotes WHERE security = ? AND begin >= ? AND begin <= ? AND interv = ?"
 	_, err = db.Exec(queryText, sec.Id(), dateFrom.UTC().Format(form), dateTill.UTC().Format(form), interval)
 	if err != nil {
-		log.Fatal("something wrong with database query when trying to delete old security quotes")
+		return err
 	}
 
 	//TODO:
@@ -462,7 +447,7 @@ func UpdateSecurityQuotes(db *sql.DB, sec *securities.Security, dateFrom time.Ti
 
 	_, err = db.Exec(queryText, args...)
 	if err != nil {
-		log.Fatal("something wrong with database query when trying to add security quotes")
+		return err
 	}
 
 	return nil
@@ -493,7 +478,7 @@ func UpdateAllSecuritiesLastQuotes(db *sql.DB, typeNameFilter string, currencyNa
 
 		qExist, err := SecurityQuotesExist(db, s, q.Begin, securities.IntervalDay)
 		if err != nil {
-			log.Fatal("something wrong with database query when checking if security quotes exist")
+			return err
 		}
 
 		if qExist {
@@ -515,7 +500,7 @@ func UpdateAllSecuritiesLastQuotes(db *sql.DB, typeNameFilter string, currencyNa
 
 	_, err = db.Exec(queryText, args...)
 	if err != nil {
-		log.Fatal("something wrong with database query when trying to add security quotes")
+		return err
 	}
 
 	return nil
