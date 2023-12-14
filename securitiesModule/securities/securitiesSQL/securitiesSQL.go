@@ -432,42 +432,38 @@ func UpdateSecurityQuotes(db *sql.DB, sec *securities.Security, dateFrom time.Ti
 	}
 
 	quotes := sec.QuotesOfInterval(interval)
-	form := "2006-01-02 15:04:05"
-	wg := new(sync.WaitGroup)
-
-	for _, q := range *quotes {
-		wg.Add(1)
-
-		go func(q securities.SecurityQuotes) {
-			defer wg.Done()
-
-			qExist, err := SecurityQuotesExist(db, sec, q.Begin, interval)
-			if err != nil {
-				log.Fatal("something wrong with database query when checking if security quotes exist")
-			}
-
-			if qExist {
-				// we need to delete old quotes and add new one
-				// for example, yesterday we've got day quotes in the middle of the day - it looks ok but actually it's not really day quotes
-				// so today we need to update it to get real day quotes for the previous day
-				queryText := "DELETE FROM security_quotes WHERE security = ? AND begin = ? AND interv = ?"
-				_, err = db.Exec(queryText, sec.Id(), q.Begin.UTC().Format("2006-01-02 15:04:05"), interval)
-				if err != nil {
-					log.Fatal("something wrong with database query when trying to delete old security quotes")
-				}
-			}
-
-			queryText := fmt.Sprintf("INSERT INTO security_quotes (security, begin, end, interv, open, close, high, low) VALUES (\"%s\", \"%s\", \"%s\", \"%d\", \"%f\", \"%f\", \"%f\", \"%f\")",
-				sec.Id(), q.Begin.UTC().Format(form), q.End.UTC().Format(form), interval, q.Open, q.Close, q.High, q.Low)
-
-			_, err = db.Exec(queryText)
-			if err != nil {
-				log.Fatal("something wrong with database query when trying to add security quotes")
-			}
-		}(q)
+	if len(*quotes) == 0 {
+		return nil
 	}
 
-	wg.Wait()
+	form := "2006-01-02 15:04:05"
+
+	// we need to delete old quotes and add new one
+	// for example, yesterday we've got day quotes in the middle of the day - it looks ok but actually it's not really day quotes
+	// so today we need to update it to get real day quotes for the previous day
+	queryText := "DELETE FROM security_quotes WHERE security = ? AND begin >= ? AND begin <= ? AND interv = ?"
+	_, err = db.Exec(queryText, sec.Id(), dateFrom.UTC().Format(form), dateTill.UTC().Format(form), interval)
+	if err != nil {
+		log.Fatal("something wrong with database query when trying to delete old security quotes")
+	}
+
+	//TODO:
+	// this will not work if we have > 1000 quotes
+	// actually that doesn't seem to really happen
+	queryText = "INSERT INTO security_quotes (security, begin, end, interv, open, close, high, low) VALUES"
+	var args []any
+	for i, q := range *quotes {
+		if i > 0 {
+			queryText += ","
+		}
+		queryText += " (?, ?, ?, ?, ?, ?, ?, ?)"
+		args = append(args, sec.Id(), q.Begin.UTC().Format(form), q.End.UTC().Format(form), interval, q.Open, q.Close, q.High, q.Low)
+	}
+
+	_, err = db.Exec(queryText, args...)
+	if err != nil {
+		log.Fatal("something wrong with database query when trying to add security quotes")
+	}
 
 	return nil
 }
