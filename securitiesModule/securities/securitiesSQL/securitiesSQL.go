@@ -481,37 +481,42 @@ func UpdateAllSecuritiesLastQuotes(db *sql.DB, typeNameFilter string, currencyNa
 	}
 
 	form := "2006-01-02 15:04:05"
-	wg := new(sync.WaitGroup)
 
+	//TODO:
+	// this will not work if we have > 1000 securities
+	// actually that absolutely doesn't seem to really happen
+	queryText := "INSERT INTO security_quotes (security, begin, end, interv, open, close, high, low) VALUES"
+	var args []any
+	noData := true
 	for _, s := range secList {
-		wg.Add(1)
+		q := s.LastQuotes(securities.IntervalDay)
 
-		go func(s *securities.Security) {
-			defer wg.Done()
+		qExist, err := SecurityQuotesExist(db, s, q.Begin, securities.IntervalDay)
+		if err != nil {
+			log.Fatal("something wrong with database query when checking if security quotes exist")
+		}
 
-			q := s.LastQuotes(securities.IntervalDay)
+		if qExist {
+			// TODO: if security quotes exist we should also check end date and probably need to update quotes in database
+			continue
+		}
 
-			qExist, err := SecurityQuotesExist(db, s, q.Begin, securities.IntervalDay)
-			if err != nil {
-				log.Fatal("something wrong with database query when checking if security quotes exist")
-			}
-
-			if qExist {
-				// TODO: if security quotes exist we should also check end date and probably need to update quotes in database
-				return
-			}
-
-			queryText := fmt.Sprintf("INSERT INTO security_quotes (security, begin, end, interv, open, close, high, low) VALUES (\"%s\", \"%s\", \"%s\", \"%d\", \"%f\", \"%f\", \"%f\", \"%f\")",
-				s.Id(), q.Begin.UTC().Format(form), q.End.UTC().Format(form), securities.IntervalDay, q.Open, q.Close, q.High, q.Low)
-
-			_, err = db.Exec(queryText)
-			if err != nil {
-				log.Fatal("something wrong with database query when trying to add security quotes")
-			}
-		}(s)
+		if !noData {
+			queryText += ","
+		}
+		queryText += " (?, ?, ?, ?, ?, ?, ?, ?)"
+		args = append(args, s.Id(), q.Begin.UTC().Format(form), q.End.UTC().Format(form), securities.IntervalDay, q.Open, q.Close, q.High, q.Low)
+		noData = false
 	}
 
-	wg.Wait()
+	if noData {
+		return nil
+	}
+
+	_, err = db.Exec(queryText, args...)
+	if err != nil {
+		log.Fatal("something wrong with database query when trying to add security quotes")
+	}
 
 	return nil
 }
